@@ -1,0 +1,2423 @@
+//main.go
+package main
+
+import (
+	"chat/additional"
+	"chat/handlersPackage"
+	"chat/logger"
+	"chat/variables"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo-jwt/v4"
+	"github.com/labstack/echo/v4"
+	"html/template"
+)
+
+// Handlers
+
+func main() {
+	variables.Db, _ = sql.Open("mysql", "mysql:mysql@/chat")
+	e := echo.New()
+	logger.NewLogger()              // new
+	e.Use(logger.LoggingMiddleware) // ne
+	e.HTTPErrorHandler = additional.CustomHTTPErrorHandler
+	//e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
+	e.Renderer = &Template{
+		templates: template.Must(template.ParseGlob("web/*.html")),
+	}
+	e.Static("/", "/web/")
+	// Routes
+	e.GET("/login", handlersPackage.Auth)
+	e.POST("/login", handlersPackage.AuthPOST)
+	e.GET("/authMain", handlersPackage.AuthMain)
+	e.GET("/registration", handlersPackage.RegGET)
+	e.POST("/registration", handlersPackage.RegPOST)
+	e.GET("/chat", handlersPackage.ChatGET)
+	e.POST("/chat", handlersPackage.ChatPOST)
+	e.GET("/", handlersPackage.MainPage)
+	e.POST("/refresh", handlersPackage.GetMessages)
+	e.POST("/loaduserconnects", handlersPackage.LoaderUser)
+	e.POST("/loadnewmessage", handlersPackage.LoadNewMessageCounter)
+	// Restricted group
+	r := e.Group("/")
+
+	// Configure middleware with the custom claims type
+	config := echojwt.Config{
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return new(variables.JwtCustomClaims)
+		},
+		SigningKey:  variables.Secret,
+		TokenLookup: "cookie:JWTToken",
+	}
+	r.Use(echojwt.WithConfig(config))
+
+	logger.Logger.LogInfo().Msg(e.Start(":1323").Error())
+	//e.Logger.Fatal(e.StartAutoTLS(":443"))
+	//e.Start(":1323")
+	//if l, ok := e.Logger.(*log.Logger); ok {
+	//	l.SetHeader("${time_rfc3339} ${level}")
+	//}
+}
+
+//render.go
+
+package main
+
+import (
+	"github.com/labstack/echo/v4"
+	"html/template"
+	"io"
+)
+
+// struct for custom template
+type Template struct {
+	templates *template.Template
+}
+
+// custom render func
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+//web/errors/500.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+</head>
+<body>
+<div class="authContainer">
+    <a class="backButton" href="/"><img src="static/back.png" alt="back"></a>
+    <div class="authInnerContainer">
+        <div class="authLogo">
+            <h1>Ошибка!!11!1</h1>
+        </div>
+        <img src="static/error.png" width="400px" alt="error">
+        <h2 class="errorMessage">Произошла ошибка при входе. Повторите снова.</h2>
+
+    </div>
+
+</div>
+
+
+</body>
+</html>
+
+//web/errors/500DARK
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+</head>
+<body class="bodyDark">
+<div class="authContainer">
+    <a class="backButton" href="/"><img src="static/back.png" alt="back"></a>
+    <div class="authInnerContainerDARK">
+        <div class="authLogo">
+            <h1>Ошибка!!11!1</h1>
+        </div>
+        <img src="static/error.png" width="400px" alt="error">
+        <h2 class="errorMessage">Произошла ошибка при входе. Повторите снова.</h2>
+
+    </div>
+
+</div>
+
+
+</body>
+</html>
+
+//web/style/reset.css
+
+/* Reset and base styles  */
+* {
+	padding: 0px;
+	margin: 0px;
+	border: none;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Links */
+
+a, a:link, a:visited  {
+    text-decoration: none;
+}
+
+a:hover  {
+    text-decoration: none;
+}
+
+/* Common */
+
+aside, nav, footer, header, section, main {
+	display: block;
+}
+
+h1, h2, h3, h4, h5, h6, p {
+    font-size: inherit;
+	font-weight: inherit;
+}
+
+ul, ul li {
+	list-style: none;
+}
+
+img {
+	vertical-align: top;
+}
+
+img, svg {
+	max-width: 100%;
+	height: auto;
+}
+
+address {
+  font-style: normal;
+}
+
+/* Form */
+
+
+input::-ms-clear {
+	display: none;
+}
+
+button, input[type="submit"] {
+    display: inline-block;
+    box-shadow: none;
+    background-color: transparent;
+    background: none;
+    cursor: pointer;
+}
+
+input:focus, input:active,
+button:focus, button:active {
+    outline: none;
+}
+
+button::-moz-focus-inner {
+	padding: 0;
+	border: 0;
+}
+
+label {
+	cursor: pointer;
+}
+
+legend {
+	display: block;
+}
+
+//web/style/style.css
+
+@font-face {
+    font-family: Montserrat; 
+    src: url(/fonts/Montserrat-VariableFont.ttf); 
+}
+
+
+
+*{
+    overflow: hidden;
+}
+img:hover {
+    transition-duration: 0.4s;
+    transform: scale(1.2);
+}
+body {
+    background: linear-gradient(180deg,  #D67BFF, #FF84E5  ,#8E34D6);
+    
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+}
+.bodyDark{
+    background: linear-gradient(180deg,  #671A8FA6, #C954D0FF, #E34FC3FF);
+
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+}
+.logo{
+display: flex;
+margin-bottom: 60px;
+width: 440px;
+}
+.logo h1{
+    color: rgb(255, 255, 255);
+font-family: Montserrat;
+font-size: 27px;
+font-weight: 500;
+line-height: 33px;
+letter-spacing: 0px;
+text-align: center;
+margin-top: 50px;
+margin-left: -25px;
+}
+.errorMessage{
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 27px;
+    font-weight: 500;
+    line-height: 33px;
+    letter-spacing: 0px;
+    text-align: center;
+    margin-top: 50px;
+}
+.authInnerContainer{
+    width: 600px;
+    height: 800px;
+    background-color: rgba(139, 60, 159, 0.75);
+    align-items: center;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.authInnerContainerDARK{
+    width: 600px;
+    height: 800px;
+    background: rgba(113, 3, 143,0.5);
+    align-items: center;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.authContainer{
+    margin-top: 75px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+.authButton{
+    align-items: center;
+    height: 70px;
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(142, 70, 175, 0.1),2px 2px 6px 0px rgba(142, 70, 175, 0.1),9px 8px 12px 0px rgba(142, 70, 175, 0.09),19px 18px 16px 0px rgba(142, 70, 175, 0.05),34px 32px 19px 0px rgba(142, 70, 175, 0.01),53px 50px 20px 0px rgba(142, 70, 175, 0);
+    background: rgb(232, 114, 231);
+    margin-bottom: 30px;
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: 0px;
+    text-align: center;
+}
+.authButtonDARK{
+    align-items: center;
+    height: 70px;
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(142, 70, 175, 0.1),2px 2px 6px 0px rgba(142, 70, 175, 0.1),9px 8px 12px 0px rgba(142, 70, 175, 0.09),19px 18px 16px 0px rgba(142, 70, 175, 0.05),34px 32px 19px 0px rgba(142, 70, 175, 0.01),53px 50px 20px 0px rgba(142, 70, 175, 0);
+    background: #71038F;
+    margin-bottom: 30px;
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: 0px;
+    text-align: center;
+}
+
+.authContainer .lightMode{
+    margin: 20px 0 0 45px;
+}
+.authContainer .backButton{
+    margin: 20px 45px 0 0;
+}
+.authLogo{
+    color: rgb(255, 255, 255);
+font-family: Montserrat;
+font-size: 27px;
+font-weight: 500;
+line-height: 33px;
+letter-spacing: 0px;
+text-align: center;
+margin: 50px 0 60px 0;
+
+}
+.authContainer form {
+    display: flex;
+    flex-direction: column;
+}
+.authContainer form input,select{
+    width: 350px;
+    height: 70px;
+    background-color: #fff;
+    border-radius: 10px;
+    margin-bottom: 35px;
+    padding: 20px 25px;
+    font-family: Montserrat;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 20px;
+}
+.authContainerDARK form input,select{
+    width: 350px;
+    height: 70px;
+    border-radius: 10px;
+    background: rgba(71, 68, 68, 0.99);
+    margin-bottom: 35px;
+    padding: 20px 25px;
+    font-family: Montserrat;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.header{
+    display: flex;
+    justify-content: space-around;
+    flex-direction: row;
+    height: 65px;
+    background-color: #8200A4;
+    margin-bottom: 15px;
+}
+.headerDARK{
+    display: flex;
+    justify-content: space-around;
+    flex-direction: row;
+    height: 65px;
+    background-color: #71038F;
+    margin-bottom: 15px;
+}
+.chatLogo{
+    display: flex;
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: 0px;
+    text-align: center;
+
+}
+.chatLogo img{
+    height: 45px;
+    margin-top: 6px;
+}
+.chatLogo h1{
+    margin-top: 18px;
+}
+.blockButton img{
+    margin: 15px 30px 0 0;
+    width: 33px;
+    height: 33px;
+}
+
+.body{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.searchContainer{
+    display: flex;
+    width: 500px;
+    height: 40px;
+    background-color: #8B3C9FBF;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.searchContainerDARK{
+    display: flex;
+    width: 500px;
+    height: 40px;
+    background-color: #CC5FCD;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.searchContainer button{
+    width: 20px;
+
+}
+.searchContainerDARK button{
+    width: 20px;
+
+}
+.searchContainerDARK input{
+    width: 460px;
+    height: 40px;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: 0px;
+    text-align: center;
+}
+.searchContainer input{
+    width: 460px;
+    height: 40px;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: 0px;
+    text-align: center;
+}
+.userListContainer{
+    width: 500px;
+    height: 100px;
+    overflow-x: scroll;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: row;
+    scrollbar-width: thin;          
+    scrollbar-color: rgb(158, 75, 179) rgb(245, 236, 236);
+    border-radius: 8px;
+}
+.userListContainerDARK{
+    width: 500px;
+    height: 100px;
+    overflow-x: scroll;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: row;
+    scrollbar-width: thin;          
+    scrollbar-color: #FD60FF #B27CB2;
+    border-radius: 8px;
+}
+
+.userCard img:hover{
+    transition-duration: 0.4s;
+    border-radius: 35% !important;
+    transform: scale(1.2);
+    margin-top: 10px;
+}
+.userCard{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 130px;
+}
+.userCard a{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.userCard img{
+    border-radius: 50%;
+    height: 55px;
+}
+.userCard h1{
+
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 14px;
+    letter-spacing: 0px;
+    text-align: center;
+    overflow:hidden;
+}
+.newMessage{
+    font-family: Montserrat;
+    line-height: 20px;
+    text-align: center;
+    position: absolute;
+    color: white;
+    font-size: 15px;
+    margin-left: 30px;
+    background-color: blue;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+}
+.chatBody{
+    width: 950px;
+    background-color: #fff;
+    border-radius: 30px;
+}
+.chatBodyDARK{
+    width: 950px;
+    background-color: #474444FC;
+    border-radius: 30px;
+}
+.messages{
+
+    height: 550px;
+    letter-spacing: 0px;
+    font-weight: 500;
+    margin-left: 130px;
+    overflow-y: scroll;
+    scrollbar-width: thin;          
+    scrollbar-color: rgb(158, 75, 179) rgb(245, 236, 236);
+    padding: 55px 0 55px 0;
+}
+.messageBottom{
+    display: flex;
+    justify-content: space-around;
+}
+.messages a img{
+    width: 30px;
+
+}
+.messages a{
+    text-align: center;
+}
+.messages span{
+    text-align: right;
+    font-family: Montserrat;
+    font-size: 12px;
+    line-height: 15px;
+    margin: 6px 0;
+}
+.messageLeft{
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(148, 99, 161, 0.1),2px 2px 7px 0px rgba(148, 99, 161, 0.1),8px 9px 12px 0px rgba(148, 99, 161, 0.09),17px 21px 16px 0px rgba(148, 99, 161, 0.05),31px 37px 19px 0px rgba(148, 99, 161, 0.01),48px 58px 21px 0px rgba(148, 99, 161, 0);
+    background: rgb(255, 255, 255);
+    color: rgb(77, 1, 97);
+    font-family: Montserrat;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-height: 70px;
+    padding: 15px;
+    margin-bottom: 35px;
+}
+.messageLeftDARK{
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(203, 119, 204, 0.1),1px 1px 4px 0px rgba(203, 119, 204, 0.1),5px 5px 7px 0px rgba(203, 119, 204, 0.09),10px 12px 9px 0px rgba(203, 119, 204, 0.05),19px 21px 11px 0px rgba(203, 119, 204, 0.01),29px 32px 12px 0px rgba(203, 119, 204, 0);
+    background: rgb(74, 73, 74);
+    color: #FD60FF;
+    font-family: Montserrat;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-height: 70px;
+    padding: 15px;
+    margin-bottom: 35px;
+
+}
+.messageLeft span{
+    color: rgb(132, 132, 132);
+}
+
+.messageRight{
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(148, 99, 161, 0.1),2px 2px 7px 0px rgba(148, 99, 161, 0.1),8px 9px 12px 0px rgba(148, 99, 161, 0.09),17px 21px 16px 0px rgba(148, 99, 161, 0.05),31px 37px 19px 0px rgba(148, 99, 161, 0.01),48px 58px 21px 0px rgba(148, 99, 161, 0);
+    background: rgb(232, 114, 231);
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-height: 70px;
+    padding: 15px;
+
+    margin: 0 0 35px 310px;
+}
+.messageRightDARK{
+    width: 350px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 0px 0px rgba(203, 119, 204, 0.1),1px 1px 4px 0px rgba(203, 119, 204, 0.1),4px 6px 7px 0px rgba(203, 119, 204, 0.09),9px 13px 9px 0px rgba(203, 119, 204, 0.05),15px 23px 11px 0px rgba(203, 119, 204, 0.01),24px 36px 12px 0px rgba(203, 119, 204, 0);
+    background: rgb(113, 3, 143);
+    color: rgb(255, 255, 255);
+    font-family: Montserrat;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-height: 70px;
+    padding: 15px;
+    margin: 0 0 35px 310px;
+}
+.messageRight span{
+    color: rgb(246, 246, 246);
+}
+
+.messageRightDARK a,.messageLeftDARK a{
+    color: rgb(255, 255, 255);
+}
+.messageRight a,.messageLeft a{
+    color: rgb(132, 132, 132);
+}
+.sendPanel{
+    height: 50px;
+    background: linear-gradient(180.00deg, rgb(240, 229, 250),rgba(255, 255, 255, 0) 100%);
+}
+.sendPanelDARK{
+    height: 50px;
+    background: linear-gradient(180.00deg, rgb(105, 104, 104),rgb(72, 68, 69) 100%);
+}
+
+.sendPanel .textInput{
+    width: 700px;
+    height: 50px;
+    background-color: transparent;
+    color: rgb(132, 132, 132);
+    font-family: Montserrat;
+    font-size: 16px;
+    line-height: 20px;
+    text-align: left;
+}
+.sendPanelDARK .textInput{
+    width: 700px;
+    height: 50px;
+    background-color: transparent;
+    color: rgb(178, 176, 176);
+    font-family: Montserrat;
+    font-size: 16px;
+    line-height: 20px;
+    text-align: left;
+}
+.sendPanel button{
+    height: 35px;
+    width: 35px;
+    opacity: 0.8;
+}
+.sendPanelDARK button{
+    height: 35px;
+    width: 35px;
+    opacity: 0.8;
+}
+.sendPanel img{
+    max-width: 30px;
+    max-height: 30px;  
+}
+
+.sendPanelDARK img{
+    max-width: 30px;
+    max-height: 30px;
+
+    
+}
+.sendBtn{
+    margin-top: -10px;
+    transform: rotate(-45.60deg);
+}
+input#file-input{
+    display: none;
+}
+.attachImg{
+    margin-top: 10px;
+
+}
+.smileSlide a:hover{
+    transform: scale(1.2);
+    transition-duration: 0.4s;
+}
+.smileBtn{
+    margin-top: 9px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+.smileSlide{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+
+}
+.smileSlideOuter{
+    height: 100px;
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(158, 75, 179) rgb(245, 236, 236);
+}
+.smileSlide a{
+    display: block;
+    margin: 3px;
+    cursor: pointer;
+    font-size: 19px;
+}
+.smileSlide p{
+    color: rgb(77, 1, 97);
+    font-family: Montserrat;
+    font-size: 14px;
+    line-height: 17px;
+    margin: 10px;
+}
+p.smileDarkText{
+    color: rgb(255, 255, 255);
+}
+
+//web/auth.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в аккаунт</title>
+    <link rel="stylesheet" href="/style/style.css">
+    <link rel="stylesheet" href="/style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body>
+    <div class="authContainer">
+        <a class="backButton" href="/authMain"><img src="static/back.png" alt=""></a>
+        <div class="authInnerContainer">
+            <div class="authLogo">
+                <h1>Вход</h1>
+            </div>
+        
+            <form method="post">
+                <input type="text" id="login"name="username" placeholder="Логин" required>
+                <input type="password" id="password"name="password"placeholder="Пароль" required>
+                <button class="authButton" type="submit">ВХОД</button>
+            </form>
+        </div>   
+        <a class="lightMode" href="/login?toggle=true"><img src="static/moon.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//web/authDARK.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в аккаунт</title>
+    <link rel="stylesheet" href="/style/style.css">
+    <link rel="stylesheet" href="/style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body class="bodyDark">
+    <div class="authContainer">
+        <a class="backButton" href="/authMain"><img src="static/back.png" alt=""></a>
+        <div class="authInnerContainerDARK">
+            <div class="authLogo">
+                <h1>Вход</h1>
+            </div>
+        
+            <form method="post">
+                <input type="text" id="login"name="username" placeholder="Логин" required>
+                <input type="password" id="password"name="password"placeholder="Пароль" required>
+                <button class="authButtonDARK" type="submit">ВХОД</button>
+            </form>
+        </div>   
+        <a class="lightMode" href="/login?toggle=true"><img src="static/dark/sun.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//web/authMain.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в аккаунт</title>
+    <link rel="stylesheet" href="/style/style.css">
+    <link rel="stylesheet" href="/style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body>
+    <div class="authContainer">
+        <div class="authInnerContainer" style="margin-left: 93px">
+            <div class="logo">
+                <img src="/static/logoImg.png" alt="LOGO">
+                <h1>ЧтоСлучилось</h1>
+            </div>
+            <a href="/login"><button class="authButton">ВХОД</button></a>
+            <a href="/registration"><button class="authButton">РЕГИСТРАЦИЯ</button></a>
+        </div>   
+        <a class="lightMode" href="/authMain?toggle=true"><img src="/static/moon.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//web/authMainDARK.html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в аккаунт</title>
+    <link rel="stylesheet" href="/style/style.css">
+    <link rel="stylesheet" href="/style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body class="bodyDark">
+    <div class="authContainer">
+        <div class="authInnerContainerDARK" style="margin-left: 93px">
+            <div class="logo">
+                <img src="/static/logoImg.png" alt="LOGO">
+                <h1>ЧтоСлучилось</h1>
+            </div>
+            <a href="/login"><button class="authButtonDARK">ВХОД</button></a>
+            <a href="/registration"><button class="authButtonDARK">РЕГИСТРАЦИЯ</button></a>
+        </div>   
+        <a class="lightMode" href="/authMain?toggle=true"><img src="/static/dark/sun.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//web/chat.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="  crossorigin="anonymous"></script>
+    <script src="static/script.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="chatLogo">
+            <img src="static/logoImg.png" alt="LOGO">
+            <h1>ЧтоСлучилось</h1>
+        </div>
+        <div class="blockButton">
+            <a class="lightMode" href="/chat?toggle=true"><img src="static/moon.png" alt=""></a>
+            <a class="lightMode" href="/chat?logout=true"><img src="static/logout.png" alt=""></a>
+        </div>
+        
+    </div>
+
+    <div class="body">
+        <div class="searchContainer">
+
+                <input id="searchInput" type="text" placeholder="    Поиск">
+                <button type="submit" id="send"><img src="static/search.png" alt=""></button>
+
+        </div>
+        <div class="userListContainer" id="userListContainer">
+            <div class="userCard"><a href="/chat?favouritechats=true"><img alt="Красивый логотип" id="" alt="" src="static/star.png"><h1>Избранные</h1></a></div>
+        </div>
+    <div class="chatBody">
+        <div class="messages">
+            {{range $key, $value := .}}
+            {{if $value.Favourite}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRight">
+                <a>Ваше сообщение</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">
+                    {{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeft">
+                <a href="/chat?recipient={{ $value.UserName }}">{{ $value.UserName }}</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">
+                    {{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+
+            {{else}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRight">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/star.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeft">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/star.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+            {{end}}
+            {{end}}
+        </div>
+
+
+        <div class="sendPanel">
+                <form method="POST" enctype="multipart/form-data">
+                    <a><img class="smileBtn" src="static/smile.png" alt=""></a>
+                    <input id="text-input" class="textInput" type="text" placeholder="Напишите что-нибудь..."  name="message" required>
+                    <button type="submit"><img class="sendBtn" src="static/send.png" alt=""></button>
+
+                        <label for="file-input">
+                            <img class="attachImg" src="static/attach.png" alt="">
+                        </label>
+                        <button>
+                            <input id="file-input" type="file" name="file">
+                        </button>
+
+
+                </form>
+        </div>
+        <div class="smileSlideOuter">
+            <div class="smileSlide">
+                <p style="width: 950px;text-align: center;">Эмоции</p><a>😀</a><a>😃</a><a>😄</a><a>😁</a><a>😆</a><a>😅</a><a>🤣</a><a>😂</a><a>🙂</a><a>🙃</a><a>😉</a><a>😊</a><a>😇</a><a>🥰</a><a>😍</a><a>🤩</a><a>😘</a><a>😗</a><a>😚</a><a>😙</a><a>😋</a><a>😛</a><a>😜</a><a>🤪</a><a>😝</a><a>🤑</a> <a>🤗</a><a>🤭</a><a>🤫</a><a>🤔</a><a>🤐</a><a>🤨</a><a>😍</a><a>😍</a><a>😍</a><a>😐</a> <a>😑</a><a>😶</a><a>😏</a><a>😒</a><a>🙄</a><a>😬</a><a>🤢</a><a>🥵</a><a>🥶</a> <a>😵</a><a>🥴</a><a>💋</a><a>💌</a> <a>💘</a><a>💝</a><a>💖</a><a>💗</a><a>💓</a><a>💞</a><a>💕</a><a>💟</a> <a>💔</a> <a>🧡</a><a>💛</a><a>💚</a> <a>💙</a><a>💜</a><a>🖤</a> <a>💢</a><a>💥</a> <a>💫</a> <a>💦</a><a>💨</a><p style="width: 950px;text-align: center;">Люди</p><a>👋</a><a>🤚</a><a>✋</a><a>✋</a><a>👌</a><a>🤞</a><a>🤟</a>a>🤘</a><a>🤙</a><a>👈</a><a>👉</a><a>👆</a><a>🖕</a><a>👇</a><a>👍</a><a>👎</a><a>✊</a><a>👊</a> <a>🤛</a><a>🤜</a><a>👏</a><a>🙌</a><a>👐</a><a>🤲</a><a>🤝</a><a>👄</a><a>👅</a><a>👶</a><a>👱</a><a>👨‍🦱</a><a>👩</a><a>👩‍🦰</a><a>🙍</a><a>🙇‍♂️</a><a>🤦</a><a>🤦‍♂️</a><a>🤷</a><a>🤷‍♂️</a><a>👩‍🌾</a><a>👨‍🌾</a><a>👨‍🍳</a><a>👩‍🍳</a><a>👨‍💻</a><a>👩‍💻</a><a>👮</a><a>👮‍♂️</a><a>👮‍♀️</a><a>💂</a><a>💂‍♀️</a><a>🚴</a><a>🏋️‍♂️</a><a>🏋️‍♀️</a><a>🤸</a><a>🤸‍♂️</a><a>🤸‍♀️</a><a>💏</a><a>👩‍❤️‍💋‍👨</a><a>👭</a><a>👫</a><a>👬</a><a>👨‍👩‍👦</a><a>👨‍👦</a><a>👨‍👧‍👦</a><p style="width: 950px;text-align: center;">Животные</p><a>🐵</a><a>🐒</a><a>🦍</a><a>🐶</a><a>🐕</a><a>🐩</a><a>🐺</a><a>🦊</a><a>🦝</a><a>🐱</a><a>🐈</a><a>🦁</a><a>🐯</a><a>🐅</a><a>🐆</a><a>🐴</a><a>🐎</a><a>🦄</a><a>🦓</a><a>🦌</a><a>🐷</a><a>🐖</a><a>🐗</a><a>🐑</a><a>🐭</a><a>🐀</a><a>🐰</a><a>🐇</a><a>🐨</a><a>🐻</a><a>🦇</a><a>🦔</a><a>🐾</a><a>🦘</a><a>🐔</a><a>🐓</a><a>🐣</a><a>🐤</a><a>🐥</a><a>🐦</a><a>🐧</a><a>🦅</a><a>🦆</a><a>🦢</a><a>🦉</a><a>🦚</a><a>🦜</a><a>🐸</a><a>🐊</a><a>🐢</a><a>🦎</a><a>🦕</a><a>🦖</a><a>🐳</a><a>🐋</a><a>🐬</a><a>🐟</a><a>🐠</a><a>🐡</a><a>🦈</a><a>🐙</a><a>🐚</a><a>🐌</a><a>🦋</a><p style="width: 950px;text-align: center;">Природа</p><a>💐</a><a>🌹</a><a>🥀</a><a>🌺</a><a>🌻</a><a>🌼</a><a>🌷</a><a>🌱</a><a>🌲</a><a>🌳</a><a>🌴</a><a>🌵</a><a>🌾</a><a>🌿</a><a>🍀</a><a>🍀</a><a>🍃</a><p style="width: 950px;text-align: center;">Еда и напитки</p><a>🍇</a><a>🍈</a><a>🍉</a><a>🍊</a><a>😍</a><a>🍋</a><a>🍌</a><a>🍍</a><a>🥭</a><a>🍎</a><a>🍏</a><a>🍐</a><a>🍑</a><a>🍒</a><a>🍓</a><a>🥝</a><a>🍅</a><a>🥥</a><a>🥑</a><a>🍆</a><a>🥔</a><a>🥕</a><a>🌽</a><a>🥒</a><a>🥬</a><a>🥦</a><a>🍄</a><a>🥜</a><a>🌰</a><a>🍞</a><a>🥐</a><a>🥖</a><a>🥨</a><a>🥯</a><a>🥞</a><a>🧀</a><a>🍖</a><a>🍗</a><a>🥩</a><a>🥓</a><a>🍔</a><a>🍟</a><a>🍕</a><a>🌭</a><a>🥪</a><a>🌮</a><a>🌯</a><a>🥙</a><a>🥚</a><a>🍳</a><a>🥘</a><a>🍲</a><a>🥣</a><a>🥗</a><a>🍿</a><a>🧂</a><a>🥫</a><a>🍱</a><a>🍘</a><a>🍙</a><a>🍚</a><a>🍛</a><a>🍜</a><a>🍝</a><a>🍠</a><a>🍢</a><a>🍣</a><a>🍤</a><a>🍥</a><a>🥮</a><a>🍡</a><a>🥟</a><a>🥠</a><a>🥡</a><a>🦀</a><a>🦞</a><a>🦐</a><a>🦑</a><a>🍦</a><a>🍧</a><a>🍨</a><a>🍩</a><a>🍪</a><a>🎂</a><a>🍰</a><a>🧁</a><a>🥧</a><a>🍫</a><a>🍬</a><a>🍭</a><a>🍮</a><a>🍯</a><a>🍼</a><a>🥛</a><a>☕</a><a>🍵</a><a>🍶</a><a>🍾</a><a>🍷</a><a>🍸</a><a>🍹</a><a>🍺</a><a>🍻</a><a>🥂</a><a>🥃</a><a>🥤</a><a>🥢</a><a>🍴</a><a>🥄</a><a>🔪</a><a>🏺</a><p style="width: 950px;text-align: center;">Места и путешествия</p><a>🌍</a><a>🌎</a><a>🌎</a><a>🌐</a><a>🏠</a><a>🏡</a><a>🏢</a><a>🏣</a><a>🏤</a><a>🏥</a><a>🏦</a><a>🏨</a><a>🏩</a><a>🏫</a><a>🏬</a><a>🏯</a><a>🏰</a><a>💒</a><a>🗼</a><a>🗽</a><a>⛪</a><a>🕌</a><a>🕍</a><a>⛲</a><a>⛺</a><a>🌄</a><a>🌅</a><a>🌇</a><a>🌆</a><a>🌌</a><a>🎠</a><a>🎡</a><a>🎢</a><a>🎪</a><a>🚇</a><a>🚉</a><a>🚈</a><a>🚋</a><a>🚌</a><a>🚍</a><a>🚎</a><a>🚐</a><a>🚑</a><a>🚒</a><a>🚓</a><a>🚔</a><a>🚕</a><a>🚖</a><a>🚘</a><a>🚙</a><a>🚚</a><a>🚜</a><a>🛵</a><a>🛴</a><a>⛽</a><a>🚨</a><a>🚥</a><a>🚦</a><a>🛑</a><a>🚧</a><a>⚓</a><a>🚀</a><a>🚁</a><a>⌛</a><a>⌚</a><a>⏰</a><a>☔</a><a>⚡</a><a>🔥</a><a>💧</a><p style="width: 950px;text-align: center;">Символы</p><a>⛔</a><a>🚫</a><a>🚳</a><a>🚭</a><a>🚯</a><a>🚱</a><a>🚷</a><a>📵</a><a>🔞</a><a>🔃</a><a>🔄</a><a>🔙</a><a>🔚</a><a>🔛</a><a>🔜</a><a>🔝</a><a>📳</a><a>📴</a><a>🎦</a><a>📛</a><a>✅</a><a>❎</a><a>❌</a><a>➿</a>
+
+            </div>
+            </div>
+
+    </div>
+
+    </div>
+    </div>
+</body>
+
+</html>
+
+//web/chatDARK.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="  crossorigin="anonymous"></script>
+    <script src="static/script.js"></script>
+
+</head>
+<body>
+    <div class="headerDARK">
+        <div class="chatLogo">
+            <img src="static/logoImg.png" alt="LOGO">
+            <h1>ЧтоСлучилось</h1>
+        </div>
+        <div class="blockButton">
+            <a class="lightMode" href="/chat?toggle=true"><img src="static/dark/sun.png" alt=""></a>
+            <a class="lightMode" href="/chat?logout=true"><img src="static/dark/logout.png" alt=""></a>
+        </div>
+        
+    </div>
+    <div class="body">
+        <div class="searchContainerDARK">
+
+                <input id="searchInput" type="text" placeholder="    Поиск">
+                <button type="submit" id="send"><img src="static/dark/search.png" alt=""></button>
+
+        </div>
+        <div class="userListContainerDARK" id="userListContainer">
+            <div class="userCard"><a href="/chat?favouritechats=true"><img alt="Красивый логотип" id="" alt="" src="static/star.png"><h1>Избранные</h1></a></div>
+        </div>
+    <div class="chatBodyDARK">
+        <div class="messages">
+            {{range $key, $value := .}}
+            {{if $value.Favourite}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRightDARK">
+                <a>Ваше сообщение</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/dark/trash.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeftDARK">
+                <a href="/chat?recipient={{ $value.UserName }}">{{ $value.UserName }}</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/dark/trash.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+
+
+            {{else}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRightDARK">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/dark/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/dark/star.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeftDARK">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/dark/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/dark/star.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+            {{end}}
+            {{end}}
+
+
+        </div>
+        <div class="sendPanelDARK">
+                <form method="POST" enctype="multipart/form-data">
+                    <a><img class="smileBtn" src="static/dark/smile.png" alt=""></a>
+                    <input  class="textInput" type="text" placeholder="Напишите что-нибудь..."  name="message">
+                    <button type="submit"><img class="sendBtn" src="static/dark/send.png" alt=""></button>
+
+                        <label for="file-input">
+                            <img class="attachImg" src="static/dark/attach.png" alt="">
+                        </label>
+                        <button>
+                            <input id="file-input" type="file" name="file">
+                        </button>
+                        
+
+                </form>
+        </div>
+        <div class="smileSlideOuter">
+            <div class="smileSlide">
+                <div class="smileSlide">
+                <p style="width: 950px;text-align: center;">Эмоции</p><a>😀</a><a>😃</a><a>😄</a><a>😁</a><a>😆</a><a>😅</a><a>🤣</a><a>😂</a><a>🙂</a><a>🙃</a><a>😉</a><a>😊</a><a>😇</a><a>🥰</a><a>😍</a><a>🤩</a><a>😘</a><a>😗</a><a>😚</a><a>😙</a><a>😋</a><a>😛</a><a>😜</a><a>🤪</a><a>😝</a><a>🤑</a> <a>🤗</a><a>🤭</a><a>🤫</a><a>🤔</a><a>🤐</a><a>🤨</a><a>😍</a><a>😍</a><a>😍</a><a>😐</a> <a>😑</a><a>😶</a><a>😏</a><a>😒</a><a>🙄</a><a>😬</a><a>🤢</a><a>🥵</a><a>🥶</a> <a>😵</a><a>🥴</a><a>💋</a><a>💌</a> <a>💘</a><a>💝</a><a>💖</a><a>💗</a><a>💓</a><a>💞</a><a>💕</a><a>💟</a> <a>💔</a> <a>🧡</a><a>💛</a><a>💚</a> <a>💙</a><a>💜</a><a>🖤</a> <a>💢</a><a>💥</a> <a>💫</a> <a>💦</a><a>💨</a><p style="width: 950px;text-align: center;">Люди</p><a>👋</a><a>🤚</a><a>✋</a><a>✋</a><a>👌</a><a>🤞</a><a>🤟</a>a>🤘</a><a>🤙</a><a>👈</a><a>👉</a><a>👆</a><a>🖕</a><a>👇</a><a>👍</a><a>👎</a><a>✊</a><a>👊</a> <a>🤛</a><a>🤜</a><a>👏</a><a>🙌</a><a>👐</a><a>🤲</a><a>🤝</a><a>👄</a><a>👅</a><a>👶</a><a>👱</a><a>👨‍🦱</a><a>👩</a><a>👩‍🦰</a><a>🙍</a><a>🙇‍♂️</a><a>🤦</a><a>🤦‍♂️</a><a>🤷</a><a>🤷‍♂️</a><a>👩‍🌾</a><a>👨‍🌾</a><a>👨‍🍳</a><a>👩‍🍳</a><a>👨‍💻</a><a>👩‍💻</a><a>👮</a><a>👮‍♂️</a><a>👮‍♀️</a><a>💂</a><a>💂‍♀️</a><a>🚴</a><a>🏋️‍♂️</a><a>🏋️‍♀️</a><a>🤸</a><a>🤸‍♂️</a><a>🤸‍♀️</a><a>💏</a><a>👩‍❤️‍💋‍👨</a><a>👭</a><a>👫</a><a>👬</a><a>👨‍👩‍👦</a><a>👨‍👦</a><a>👨‍👧‍👦</a><p style="width: 950px;text-align: center;">Животные</p><a>🐵</a><a>🐒</a><a>🦍</a><a>🐶</a><a>🐕</a><a>🐩</a><a>🐺</a><a>🦊</a><a>🦝</a><a>🐱</a><a>🐈</a><a>🦁</a><a>🐯</a><a>🐅</a><a>🐆</a><a>🐴</a><a>🐎</a><a>🦄</a><a>🦓</a><a>🦌</a><a>🐷</a><a>🐖</a><a>🐗</a><a>🐑</a><a>🐭</a><a>🐀</a><a>🐰</a><a>🐇</a><a>🐨</a><a>🐻</a><a>🦇</a><a>🦔</a><a>🐾</a><a>🦘</a><a>🐔</a><a>🐓</a><a>🐣</a><a>🐤</a><a>🐥</a><a>🐦</a><a>🐧</a><a>🦅</a><a>🦆</a><a>🦢</a><a>🦉</a><a>🦚</a><a>🦜</a><a>🐸</a><a>🐊</a><a>🐢</a><a>🦎</a><a>🦕</a><a>🦖</a><a>🐳</a><a>🐋</a><a>🐬</a><a>🐟</a><a>🐠</a><a>🐡</a><a>🦈</a><a>🐙</a><a>🐚</a><a>🐌</a><a>🦋</a><p style="width: 950px;text-align: center;">Природа</p><a>💐</a><a>🌹</a><a>🥀</a><a>🌺</a><a>🌻</a><a>🌼</a><a>🌷</a><a>🌱</a><a>🌲</a><a>🌳</a><a>🌴</a><a>🌵</a><a>🌾</a><a>🌿</a><a>🍀</a><a>🍀</a><a>🍃</a><p style="width: 950px;text-align: center;">Еда и напитки</p><a>🍇</a><a>🍈</a><a>🍉</a><a>🍊</a><a>😍</a><a>🍋</a><a>🍌</a><a>🍍</a><a>🥭</a><a>🍎</a><a>🍏</a><a>🍐</a><a>🍑</a><a>🍒</a><a>🍓</a><a>🥝</a><a>🍅</a><a>🥥</a><a>🥑</a><a>🍆</a><a>🥔</a><a>🥕</a><a>🌽</a><a>🥒</a><a>🥬</a><a>🥦</a><a>🍄</a><a>🥜</a><a>🌰</a><a>🍞</a><a>🥐</a><a>🥖</a><a>🥨</a><a>🥯</a><a>🥞</a><a>🧀</a><a>🍖</a><a>🍗</a><a>🥩</a><a>🥓</a><a>🍔</a><a>🍟</a><a>🍕</a><a>🌭</a><a>🥪</a><a>🌮</a><a>🌯</a><a>🥙</a><a>🥚</a><a>🍳</a><a>🥘</a><a>🍲</a><a>🥣</a><a>🥗</a><a>🍿</a><a>🧂</a><a>🥫</a><a>🍱</a><a>🍘</a><a>🍙</a><a>🍚</a><a>🍛</a><a>🍜</a><a>🍝</a><a>🍠</a><a>🍢</a><a>🍣</a><a>🍤</a><a>🍥</a><a>🥮</a><a>🍡</a><a>🥟</a><a>🥠</a><a>🥡</a><a>🦀</a><a>🦞</a><a>🦐</a><a>🦑</a><a>🍦</a><a>🍧</a><a>🍨</a><a>🍩</a><a>🍪</a><a>🎂</a><a>🍰</a><a>🧁</a><a>🥧</a><a>🍫</a><a>🍬</a><a>🍭</a><a>🍮</a><a>🍯</a><a>🍼</a><a>🥛</a><a>☕</a><a>🍵</a><a>🍶</a><a>🍾</a><a>🍷</a><a>🍸</a><a>🍹</a><a>🍺</a><a>🍻</a><a>🥂</a><a>🥃</a><a>🥤</a><a>🥢</a><a>🍴</a><a>🥄</a><a>🔪</a><a>🏺</a><p style="width: 950px;text-align: center;">Места и путешествия</p><a>🌍</a><a>🌎</a><a>🌎</a><a>🌐</a><a>🏠</a><a>🏡</a><a>🏢</a><a>🏣</a><a>🏤</a><a>🏥</a><a>🏦</a><a>🏨</a><a>🏩</a><a>🏫</a><a>🏬</a><a>🏯</a><a>🏰</a><a>💒</a><a>🗼</a><a>🗽</a><a>⛪</a><a>🕌</a><a>🕍</a><a>⛲</a><a>⛺</a><a>🌄</a><a>🌅</a><a>🌇</a><a>🌆</a><a>🌌</a><a>🎠</a><a>🎡</a><a>🎢</a><a>🎪</a><a>🚇</a><a>🚉</a><a>🚈</a><a>🚋</a><a>🚌</a><a>🚍</a><a>🚎</a><a>🚐</a><a>🚑</a><a>🚒</a><a>🚓</a><a>🚔</a><a>🚕</a><a>🚖</a><a>🚘</a><a>🚙</a><a>🚚</a><a>🚜</a><a>🛵</a><a>🛴</a><a>⛽</a><a>🚨</a><a>🚥</a><a>🚦</a><a>🛑</a><a>🚧</a><a>⚓</a><a>🚀</a><a>🚁</a><a>⌛</a><a>⌚</a><a>⏰</a><a>☔</a><a>⚡</a><a>🔥</a><a>💧</a><p style="width: 950px;text-align: center;">Символы</p><a>⛔</a><a>🚫</a><a>🚳</a><a>🚭</a><a>🚯</a><a>🚱</a><a>🚷</a><a>📵</a><a>🔞</a><a>🔃</a><a>🔄</a><a>🔙</a><a>🔚</a><a>🔛</a><a>🔜</a><a>🔝</a><a>📳</a><a>📴</a><a>🎦</a><a>📛</a><a>✅</a><a>❎</a><a>❌</a><a>➿</a>
+
+            </div>
+        </div>
+    </div>
+    </div>
+    
+</body>
+
+
+</html>
+
+//web/reg.html
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация нового аккаунта</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body>
+    <div class="authContainer">
+        <a class="backButton" href="/authMain"><img src="static/back.png" alt=""></a>
+        <div class="authInnerContainer">
+            <div class="authLogo">
+                <h1>Регистрация</h1>
+            </div>
+        
+            <form method="post" enctype="multipart/form-data">
+                <input type="text" id="login"name="username" placeholder="Логин" required>
+                <input type="text" id="email"name="email" placeholder="Email"required>
+                
+                <input type="file" name ="logo"required>
+                <input type="password" id="password"name="password"placeholder="Пароль"required>
+                <button class="authButton" type="submit">РЕГИСТРАЦИЯ</button>
+            </form>
+        </div>   
+        <a class="lightMode" href="/registration?toggle=true"><img src="static/moon.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//web/regDARK.html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация нового аккаунта</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body class="bodyDark">
+    <div class="authContainer">
+        <a class="backButton" href="/authMain"><img src="static/back.png" alt=""></a>
+        <div class="authInnerContainerDARK">
+            <div class="authLogo">
+                <h1>Регистрация</h1>
+            </div>
+        
+            <form method="post" enctype="multipart/form-data">
+                <input type="text" id="login"name="username" placeholder="Логин"required>
+                <input type="text" id="email"name="email" placeholder="Email"required>
+
+                <input type="file" name ="logo"required>
+                <input type="password" id="password"name="password"placeholder="Пароль"required>
+                <button class="authButtonDARK" type="submit">РЕГИСТРАЦИЯ</button>
+            </form>
+        </div>   
+        <a class="lightMode" href="/registration?toggle=true"><img src="static/dark/sun.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>
+
+//scriptBackup.sql
+
+create table content
+(
+    contentID int auto_increment
+        primary key,
+    text      longtext not null,
+    file      longblob not null,
+    fileName  text     null
+)
+    row_format = COMPRESSED;
+
+create table user
+(
+    username    varchar(30)                         null,
+    email       varchar(255)                        not null,
+    password    binary(16)                          not null,
+    create_time timestamp default CURRENT_TIMESTAMP not null,
+    userID      int auto_increment
+        primary key,
+    logo        longblob                            null,
+    constraint user_pk
+        unique (username),
+    constraint user_username_uindex
+        unique (username)
+)
+    row_format = COMPRESSED;
+
+create table connects
+(
+    userA    int                                 null,
+    userB    int                                 null,
+    id       int auto_increment
+        primary key,
+    timeOpen timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
+    constraint connects_pk
+        unique (userA, userB),
+    constraint connects_user_userID_fk
+        foreign key (userA) references user (userID)
+            on delete cascade,
+    constraint connects_user_userID_fk2
+        foreign key (userB) references user (userID)
+            on delete cascade
+)
+    row_format = COMPRESSED;
+
+create table message
+(
+    messageID int auto_increment
+        primary key,
+    fromID    int                                not null,
+    toID      int                                not null,
+    date      datetime default CURRENT_TIMESTAMP not null,
+    contentID int                                not null,
+    constraint message_date_uindex
+        unique (date),
+    constraint content
+        foreign key (contentID) references content (contentID)
+            on update cascade on delete cascade,
+    constraint `from`
+        foreign key (fromID) references user (userid),
+    constraint `to`
+        foreign key (toID) references user (userid)
+)
+    row_format = COMPRESSED;
+
+create table favouritemessage
+(
+    id              int auto_increment
+        primary key,
+    fromID          int not null,
+    messageID       int not null,
+    favouriteuserid int not null,
+    constraint favouriteMessage_message_messageID_fk
+        foreign key (messageID) references message (messageID)
+            on update cascade on delete cascade,
+    constraint favouriteMessage_user_userID_fk
+        foreign key (fromID) references user (userID),
+    constraint favouriteMessage_user_userID_fk1
+        foreign key (favouriteuserid) references user (userID)
+);
+
+create definer = mysql@`%` trigger before_delete_message
+    before delete
+    on message
+    for each row
+BEGIN
+        delete from content where content.contentID=OLD.contentID;
+    END;
+
+create definer = mysql@`%` trigger before_delete_user
+    before delete
+    on user
+    for each row
+BEGIN
+        delete from message where message.fromID=OLD.userID;
+    END;
+
+//aditional/additionalFunctions.go
+
+package additional
+
+import (
+	"chat/variables"
+	"fmt"
+	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
+	"net/http"
+)
+
+// fonc for validate JWT token
+func ValidateToken(c echo.Context) string {
+	//retrieve cookie value
+	cookie, _ := c.Cookie("JWTToken")
+	if cookie == nil {
+		return "Token error"
+	}
+	//try parse token
+	token, _ := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("There was an error in parsing")
+		}
+		return variables.Secret, nil
+	})
+	//if token not valid
+	if token == nil {
+		return "Token error"
+	}
+	//try parse claim from token
+	claims, ok := token.Claims.(jwt.MapClaims)
+	//if token claims not valid
+	if !ok {
+		return "Token error"
+	}
+	//return username string from claim
+	return claims["name"].(string)
+}
+
+// func retrieve Theme from cookie
+func CheckTheme(c echo.Context) string {
+	//retrieve cookie value
+	theme, err := c.Cookie("theme")
+	if err != nil {
+		//if cookie not found
+		return "ERR"
+	}
+	//return theme cookie value
+	return theme.Value
+}
+
+// func check if exist username in DB
+func CheckUser(username string) string {
+	var ID string
+	//query for DB
+	result, _ := variables.Db.Query("select userID from user where username = ? or userID = ?", username, username)
+	if result == nil {
+		//if username not found
+		return ""
+	}
+	for result.Next() {
+		//scan userID
+		err := result.Scan(&ID)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	//return username MessageID
+	return ID
+}
+
+// function for Toggle theme value on cookie
+func Toggle(c echo.Context) string {
+	//make cookie
+	theme, err := c.Cookie("theme")
+	Cookie := &http.Cookie{}
+	Cookie.Name = "theme"
+	Cookie.SameSite = 3
+	Cookie.HttpOnly = true
+	Cookie.Secure = true
+	//if theme cookie not found
+	if err != nil {
+		Cookie.Value = "light"
+		c.SetCookie(Cookie)
+		return Cookie.Value
+	}
+	//if last theme is dark
+	if theme.Value == "dark" {
+		Cookie.Value = "light"
+
+	}
+	//if last theme is light
+	if theme.Value == "light" {
+		Cookie.Value = "dark"
+
+	}
+	//set cookie
+	c.SetCookie(Cookie)
+	//return current theme
+	return Cookie.Value
+}
+
+// handler for HTTP errors
+func CustomHTTPErrorHandler(err error, c echo.Context) {
+	//retrieve code error
+	code := http.StatusInternalServerError
+	//if he, ok := err.(*echo.HTTPError); ok {
+	//	code = he.Code
+	//}
+	//c.Logger().Error(err)
+	theme := CheckTheme(c)
+	errorPage := ""
+	//make error page lin
+	if theme == "dark" {
+		errorPage = fmt.Sprintf("web/errors/%dDARK.html", code)
+	} else {
+		errorPage = fmt.Sprintf("web/errors/%d.html", code)
+	}
+
+	if err := c.File(errorPage); err != nil {
+		c.Logger().Error(err)
+	}
+}
+
+//additional/chatAdditional.go
+
+
+package additional
+
+import (
+	"bytes"
+	"chat/variables"
+	"fmt"
+	"github.com/labstack/echo/v4"
+	"net/http"
+	"sort"
+	"time"
+)
+
+// func analyze auth status and return response view
+func AuthRegView(c echo.Context, page string) error {
+	var theme = ""
+	toggleParam := c.QueryParam("toggle")
+	if toggleParam == "true" {
+		theme = Toggle(c)
+	}
+	if ValidateToken(c) == "Token error" {
+		if theme == "" {
+			theme = CheckTheme(c)
+		}
+		if theme == "dark" {
+			return c.Render(http.StatusOK, page+"DARK.html", nil)
+		} else {
+			return c.Render(http.StatusOK, page+".html", nil)
+		}
+
+	} else {
+		return c.Redirect(http.StatusMovedPermanently, "/chat")
+	}
+}
+
+// func for chat views
+func ParseMessages(c echo.Context, usernameID string, recipientID string) []variables.Message {
+	_, err := variables.Db.Exec("insert into connects(userA, userB) values (?,?)", usernameID, recipientID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var messages []variables.Message
+	result, err := variables.Db.Query("select messageID,text,file,fileName,cast(date as char) from message join content on content.contentID = message.contentID where message.fromID = ? and message.toID = ?", usernameID, recipientID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for result.Next() {
+		var text, dateStr, fileName string
+		var byteFile []byte
+		var id int
+		err = result.Scan(&id, &text, &byteFile, &fileName, &dateStr)
+		date, err := time.Parse(variables.TimeFormat, dateStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var elem variables.Message
+		if bytes.Equal(byteFile, []byte{48}) == true {
+			elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: "", Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+		} else {
+			elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: fileName, Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+		}
+		messages = append(messages, elem)
+	}
+
+	result, err = variables.Db.Query("select messageID,text,file,fileName,cast(date as char) from message join content on content.contentID = message.contentID where message.fromID = ? and message.toID = ?", recipientID, usernameID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for result.Next() {
+		var text, dateStr, fileName string
+		var byteFile []byte
+		var id int
+		err = result.Scan(&id, &text, &byteFile, &fileName, &dateStr)
+		date, err := time.Parse(variables.TimeFormat, dateStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var elem variables.Message
+		if bytes.Equal(byteFile, []byte{48}) == true {
+			elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: "", Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+		} else {
+			elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: fileName, Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+		}
+		messages = append(messages, elem)
+	}
+	sort.Slice(messages, func(i, j int) bool { return messages[i].Date.Before(messages[j].Date) })
+	lastMessageCookie := &http.Cookie{}
+	lastMessageCookie.Name = "lastMessage"
+	if len(messages) > 0 {
+		lastMessageCookie.Value = messages[len(messages)-1:][0].DateStr
+	} else {
+		now := time.Now()
+		lastMessageCookie.Value = now.Format("2006-01-02 15:04:05")
+	}
+	lastMessageCookie.SameSite = 3
+	lastMessageCookie.HttpOnly = true
+	lastMessageCookie.Secure = true
+	c.SetCookie(lastMessageCookie)
+	return messages
+}
+func UpdateTimeVisit(userA string, userB string) {
+	now := time.Now()
+	lastVisitTime := now.Format("2006-01-02 15:04:05")
+	_, err := variables.Db.Exec("update connects set timeOpen = ? where userA = ? and userB = ?",
+		lastVisitTime, userA, userB)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+func SearchRecipient(c echo.Context) string {
+	var recipientID string
+	recipient := c.QueryParam("recipient")
+	recipientID = CheckUser(recipient)
+	if recipientID != "" {
+		newRecipientCookie := &http.Cookie{}
+		newRecipientCookie.Name = "recipient"
+		newRecipientCookie.Value = recipientID
+		newRecipientCookie.SameSite = 3
+		newRecipientCookie.HttpOnly = true
+		newRecipientCookie.Secure = true
+		c.SetCookie(newRecipientCookie)
+	} else {
+		var recipientCookie, err = c.Cookie("recipient")
+		if err != nil {
+			fmt.Println(err)
+		}
+		if recipientCookie != nil {
+			recipientID = recipientCookie.Value
+		}
+	}
+	return recipientID
+}
+func DeleteMessage(usernameID string, deleteID string) {
+	_, err := variables.Db.Exec("delete from message where messageID = ? and "+
+		"(message.fromID = ? or message.toID = ?)", deleteID, usernameID, usernameID)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+
+func DeleteFavouriteMessage(usernameID string, deleteID string) {
+	_, err := variables.Db.Exec("delete from favouritemessage where id = ? and favouriteuserid = ?",
+		deleteID, usernameID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+
+func FavouriteMessage(usernameID string, favouriteID string) {
+	result, err := variables.Db.Query("select fromID from message where(message.fromID = ? or message.toID = ?) and message.messageID = ?", usernameID, usernameID, favouriteID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var fromID string
+	for result.Next() {
+		err = result.Scan(&fromID)
+	}
+	_, err = variables.Db.Exec("insert into favouritemessage(fromID, messageID, favouriteuserid) values (?, ?, ?)", fromID, favouriteID, usernameID)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+func DownloadFavourite(c echo.Context, favouriteID string) []variables.FavouriteMessages {
+	var favouriteArray []variables.FavouriteMessages
+	result, err := variables.Db.Query("select favouritemessage.id,username,favouritemessage.fromID,text,"+
+		"cast(date as char),file,fileName from favouritemessage join message on "+
+		"favouritemessage.messageID = message.messageID join chat.content on message.contentID = "+
+		"content.contentID join user on favouritemessage.fromID = user.userID where favouritemessage.favouriteuserid "+
+		"= ? and favouritemessage.favouriteuserid != favouritemessage.fromID", favouriteID)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for result.Next() {
+		var username, text, dateStr, fileName string
+		var byteFile []byte
+		var fromid, id int
+		err = result.Scan(&id, &username, &fromid, &text, &dateStr, &byteFile, &fileName)
+		date, err := time.Parse(variables.TimeFormat, dateStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var elem variables.FavouriteMessages
+		if bytes.Equal(byteFile, []byte{48}) == true {
+			elem = variables.FavouriteMessages{MessageID: id, Favourite: true, UserName: username, FromID: fromid,
+				Text: text, File: byteFile, FileName: "", Date: date,
+				DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+		} else {
+			elem = variables.FavouriteMessages{MessageID: id, Favourite: true, UserName: username, FromID: fromid,
+				Text: text, File: byteFile, FileName: fileName, Date: date,
+				DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+		}
+		favouriteArray = append(favouriteArray, elem)
+	}
+
+	result, err = variables.Db.Query("select favouritemessage.id,username,favouritemessage.fromID,text"+
+		",cast(date as char),file,fileName from favouritemessage join message "+
+		"on favouritemessage.messageID = message.messageID join chat.content on "+
+		"message.contentID = content.contentID join user on favouritemessage.fromID "+
+		"= user.userID where favouritemessage.favouriteuserid = ? and favouritemessage.favouriteuserid "+
+		"= favouritemessage.fromID", favouriteID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for result.Next() {
+		var username, text, dateStr, fileName string
+		var byteFile []byte
+		var fromid, id int
+		err = result.Scan(&id, &username, &fromid, &text, &dateStr, &byteFile, &fileName)
+		if err != nil {
+			fmt.Println(err)
+		}
+		date, err := time.Parse(variables.TimeFormat, dateStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var elem variables.FavouriteMessages
+		if bytes.Equal(byteFile, []byte{48}) == true {
+			elem = variables.FavouriteMessages{MessageID: id, Favourite: true, UserName: username,
+				FromID: fromid, Text: text, File: byteFile, FileName: "", Date: date,
+				DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+		} else {
+			elem = variables.FavouriteMessages{MessageID: id, Favourite: true, UserName: username,
+				FromID: fromid, Text: text, File: byteFile, FileName: fileName, Date: date,
+				DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+		}
+		favouriteArray = append(favouriteArray, elem)
+	}
+	sort.Slice(favouriteArray, func(i, j int) bool { return favouriteArray[i].Date.Before(favouriteArray[j].Date) })
+	return favouriteArray
+}
+
+
+//handlersPackage/ajaxHandlers.go
+
+package handlersPackage
+
+import (
+	"bytes"
+	"chat/additional"
+	"chat/variables"
+	"database/sql"
+	"encoding/base64"
+	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
+	"net/http"
+	"sort"
+	"time"
+)
+
+func LoadNewMessageCounter(c echo.Context) error {
+	var newDate time.Time
+	var messages []variables.MessagesCounter
+	username := additional.ValidateToken(c)
+	if username != "Token error" {
+		usernameID := additional.CheckUser(username)
+		result, err := variables.Db.Query("select id,userA,userB,timeOpen from connects where userA = ?", usernameID)
+		if err != nil {
+			fmt.Println(err)
+		}
+		for result.Next() {
+			var dateStr string
+			var id, userA, userB int
+			err = result.Scan(&id, &userA, &userB, &dateStr)
+			date, err := time.Parse(variables.TimeFormat, dateStr)
+			if err != nil {
+				fmt.Println(err)
+			}
+			resMessage, err := variables.Db.Query("select cast(date as char) from message where message.fromID = ? and message.toID = ? and date > ?", userB, userA, newDate.Format("2006-01-02 15:04:05"))
+			var counter = 0
+			for resMessage.Next() {
+				var strDateMessage string
+				err = resMessage.Scan(&strDateMessage)
+				dateMessage, _ := time.Parse(variables.TimeFormat, strDateMessage)
+				if dateMessage.After(date) {
+					counter++
+					date = dateMessage
+				}
+
+			}
+			if counter != 0 {
+				var elem variables.MessagesCounter
+				elem = variables.MessagesCounter{UserID: userB, MCounter: counter}
+				messages = append(messages, elem)
+
+			}
+
+		}
+
+	}
+
+	return c.JSON(http.StatusOK, messages)
+}
+
+func LoaderUser(c echo.Context) error {
+	var result *sql.Rows
+	var err error
+	username := additional.ValidateToken(c)
+	usernameID := additional.CheckUser(username)
+	if usernameID == "" {
+		return c.Redirect(http.StatusMovedPermanently, "/")
+	} else {
+		result, err = variables.Db.Query("select user.UserID,username,logo from connects join user on connects.userB = user.userID and connects.userA = ? limit 10", usernameID)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	if c.FormValue("search") != "" {
+		// retrieve search string
+		queryString := c.FormValue("search")
+
+		//ВНИМАЕНИЕ
+
+		result, err = variables.Db.Query("select user.UserID,username,logo from user where username like '%" + queryString + "%' limit 10 ")
+
+		//ВНИМАНИЕ
+	}
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var users []variables.User
+	for result.Next() {
+		var uid int
+		var username string
+		var logo []byte
+		err = result.Scan(&uid, &username, &logo)
+		strLogo := base64.StdEncoding.EncodeToString(logo)
+
+		users = append(users, variables.User{Id: uid, Username: username, Logo: strLogo})
+	}
+	if err != nil {
+		log.Error(err)
+	}
+	return c.JSON(http.StatusOK, users)
+}
+
+func GetMessages(c echo.Context) error {
+	lastMessage, err := c.Cookie("lastMessage")
+	var newDate time.Time
+	var newDateForCookie time.Time
+	if err != nil {
+		newDateForCookie, err = time.Parse(variables.TimeFormat, "2000-01-01 00:00:00")
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		if lastMessage.Value != "" {
+			newDateForCookie, err = time.Parse(variables.TimeFormat, lastMessage.Value)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+	var messages []variables.Message
+	newDate = newDateForCookie
+	username := additional.ValidateToken(c)
+	if username != "Token error" {
+		recipientID := additional.SearchRecipient(c)
+		usernameID := additional.CheckUser(username)
+		result, err := variables.Db.Query("select messageID,text,file,fileName,cast(date as char) from message "+
+			"join content on content.contentID = message.contentID join user on user.userID = message.fromID "+
+			"where message.fromID = ? and message.toID = ? and date > ?", usernameID, recipientID,
+			newDate.Format("2006-01-02 15:04:05"))
+		if err != nil {
+			fmt.Println(err)
+		}
+		for result.Next() {
+			var text, dateStr, fileName string
+			var byteFile []byte
+			var id int
+			err = result.Scan(&id, &text, &byteFile, &fileName, &dateStr)
+			date, err := time.Parse(variables.TimeFormat, dateStr)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if newDate.After(date) {
+
+			} else {
+				newDateForCookie = date
+				var elem variables.Message
+				if bytes.Equal(byteFile, []byte{48}) == true {
+					elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: "", Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+				} else {
+					elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: fileName, Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "r"}
+				}
+				messages = append(messages, elem)
+			}
+		}
+		result = nil
+		result, err = variables.Db.Query("select messageID,text,file,fileName,cast(date as char) from message join content on content.contentID = message.contentID join user on user.userID = message.fromID where message.fromID = ? and message.toID = ? and date > ?", recipientID, usernameID, newDate.Format("2006-01-02 15:04:05"))
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		for result.Next() {
+			var text, dateStr, fileName string
+			var byteFile []byte
+			var id int
+			err = result.Scan(&id, &text, &byteFile, &fileName, &dateStr)
+			date, err := time.Parse(variables.TimeFormat, dateStr)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if newDate.After(date) {
+
+			} else {
+				newDateForCookie = date
+				var elem variables.Message
+				if bytes.Equal(byteFile, []byte{48}) == true {
+					elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: "", Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+				} else {
+					elem = variables.Message{Favourite: false, MessageID: id, Text: text, File: byteFile, FileName: fileName, Date: date, DateStr: date.Format("2006-01-02 15:04:05"), Pos: "l"}
+				}
+				messages = append(messages, elem)
+			}
+		}
+		sort.Slice(messages, func(i, j int) bool { return messages[i].Date.Before(messages[j].Date) })
+		lastMessageCookie := &http.Cookie{}
+		lastMessageCookie.Name = "lastMessage"
+		lastMessageCookie.Value = newDateForCookie.Format("2006-01-02 15:04:05")
+		lastMessageCookie.SameSite = 3
+		lastMessageCookie.HttpOnly = true
+		lastMessageCookie.Secure = true
+		c.SetCookie(lastMessageCookie)
+	}
+
+	return c.JSON(http.StatusOK, messages)
+
+}
+
+//handlersPackage/authentification.go
+
+package handlersPackage
+
+import (
+	"chat/additional"
+	"chat/variables"
+	"crypto/md5"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v4"
+	"net/http"
+	"time"
+)
+
+func Auth(c echo.Context) error {
+	return additional.AuthRegView(c, "auth")
+}
+func AuthPOST(c echo.Context) error {
+	if additional.ValidateToken(c) == "Token error" {
+		username := c.FormValue("username")
+		password := c.FormValue("password")
+
+		hash := md5.Sum([]byte(password + variables.AdditionalString))
+		result, err := variables.Db.Query("select password from user where username = ?", username)
+		if err != nil {
+			return err
+		}
+
+		for result.Next() {
+			var u []byte
+			err = result.Scan(&u)
+			var fixedSizePassword [16]byte
+			copy(fixedSizePassword[:], u)
+
+			// Throws unauthorized error
+			if fixedSizePassword == hash {
+
+				// Set custom claims
+				claims := &variables.JwtCustomClaims{
+					Name: username,
+					RegisteredClaims: jwt.RegisteredClaims{
+						ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
+					},
+				}
+
+				// Create token with claims
+				token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+				// Generate encoded token and send it as response.
+				t, err := token.SignedString(variables.Secret)
+				if err != nil {
+					return err
+				}
+				JWTCookie := &http.Cookie{}
+				JWTCookie.Name = "JWTToken"
+				JWTCookie.Expires = time.Now().Add(time.Hour * 72)
+				JWTCookie.Value = t
+				JWTCookie.SameSite = 3
+				JWTCookie.HttpOnly = true
+				JWTCookie.Secure = true
+				c.SetCookie(JWTCookie)
+
+			}
+		}
+	}
+	return c.Redirect(http.StatusMovedPermanently, "/chat")
+
+}
+
+
+//handlersPackage/chatPage.go
+
+package handlersPackage
+
+import (
+	"chat/additional"
+	"chat/variables"
+	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
+	"io"
+	"net/http"
+)
+
+func LogoutFunc(c echo.Context) error {
+	Cookie := &http.Cookie{}
+	Cookie.Name = "JWTToken"
+	Cookie.Value = ""
+	Cookie.SameSite = 3
+	Cookie.HttpOnly = true
+	Cookie.Secure = true
+	c.SetCookie(Cookie)
+	Cookie.Name = "recipient"
+	c.SetCookie(Cookie)
+	Cookie.Name = "lastMessage"
+	c.SetCookie(Cookie)
+	return c.Redirect(http.StatusMovedPermanently, "/")
+}
+
+func FavouritePage(c echo.Context) {
+	recipientCookie := &http.Cookie{}
+	recipientCookie.Name = "recipient"
+	recipientCookie.Value = ""
+	recipientCookie.SameSite = 3
+	recipientCookie.HttpOnly = true
+	recipientCookie.Secure = true
+	c.SetCookie(recipientCookie)
+}
+
+func ChatGET(c echo.Context) error {
+	logoutParam := c.QueryParam("logout")
+	if logoutParam != "" {
+		return LogoutFunc(c)
+	}
+	var theme = ""
+	toggleParam := c.QueryParam("toggle")
+	if toggleParam == "true" {
+		theme = additional.Toggle(c)
+	}
+	if theme == "" {
+		theme = additional.CheckTheme(c)
+	}
+	username := additional.ValidateToken(c)
+	if username != "Token error" {
+		usernameID := additional.CheckUser(username)
+		if usernameID == "" {
+			return c.Redirect(http.StatusMovedPermanently, "/")
+		}
+
+		//search recipient MessageID from Cookie or GET request
+		recipientID := additional.SearchRecipient(c)
+		//if user press on favourite messages
+		favouriteChatsParam := c.QueryParam("favouritechats")
+		if favouriteChatsParam != "" {
+			FavouritePage(c)
+			recipientID = ""
+		}
+		//if user press on delete message button
+		deleteFavouriteID := c.QueryParam("deletefavourite")
+		if deleteFavouriteID != "" {
+			additional.DeleteFavouriteMessage(usernameID, deleteFavouriteID)
+		}
+		deleteID := c.QueryParam("delete")
+		if deleteID != "" {
+			additional.DeleteMessage(usernameID, deleteID)
+		}
+		//if user press on favourite message button
+		favouriteID := c.QueryParam("favourite")
+		if favouriteID != "" {
+			additional.FavouriteMessage(usernameID, favouriteID)
+		}
+
+		if recipientID != "" && recipientID != usernameID {
+			additional.UpdateTimeVisit(usernameID, recipientID)
+			messages := additional.ParseMessages(c, usernameID, recipientID)
+			if theme == "dark" {
+				return c.Render(http.StatusOK, "chatDARK.html", messages)
+			} else {
+				return c.Render(http.StatusOK, "chat.html", messages)
+			}
+		} else {
+			favouriteMessagesArray := additional.DownloadFavourite(c, usernameID)
+			if theme == "dark" {
+				return c.Render(http.StatusOK, "chatDARK.html", favouriteMessagesArray)
+			} else {
+				return c.Render(http.StatusOK, "chat.html", favouriteMessagesArray)
+			}
+		}
+
+	} else {
+		return c.Redirect(http.StatusMovedPermanently, "/")
+	}
+
+}
+
+func ChatPOST(c echo.Context) error {
+	username := additional.ValidateToken(c)
+	usernameID := additional.CheckUser(username)
+	if usernameID == "" {
+		return c.Redirect(http.StatusMovedPermanently, "/")
+	}
+	if c.FormValue("search") != "" {
+		return LoaderUser(c)
+	}
+	recipientID := additional.SearchRecipient(c)
+	//read text from form
+	text := c.FormValue("message")
+	// read file
+	file, err := c.FormFile("file")
+	if err != nil {
+		fmt.Println("no file")
+	}
+	var dst = []byte{48}
+	var fName string
+	if file == nil {
+		//if file not appended to message
+		fName = ""
+	} else {
+		src, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		dst, _ = io.ReadAll(src)
+		fName = "Вложение: " + file.Filename
+	}
+	//insert content of new message to DB
+	_, err = variables.Db.Exec("insert into chat.content (text, file, fileName) values (?,?,?)", text, dst, fName)
+	if err != nil {
+		log.Error(err)
+	}
+	//insert new message to DB
+	_, err = variables.Db.Exec("insert into message (fromID, toID, contentID) values (?,?,LAST_INSERT_ID());", usernameID, recipientID)
+	if err != nil {
+		log.Error(err)
+	}
+	return c.Redirect(http.StatusMovedPermanently, "/chat")
+}
+
+
+//handlersPackage/mainPage.go
+
+package handlersPackage
+
+import (
+	"chat/additional"
+	"github.com/labstack/echo/v4"
+	"net/http"
+)
+
+func MainPage(c echo.Context) error {
+	//make theme cookie
+	Cookie := &http.Cookie{}
+	Cookie.Name = "theme"
+	Cookie.Value = "light" // light theme default
+	Cookie.SameSite = 3
+	Cookie.HttpOnly = true
+	Cookie.Secure = true
+	c.SetCookie(Cookie)
+	//if authorize
+	if additional.ValidateToken(c) == "Token error" {
+		return c.Redirect(http.StatusMovedPermanently, "/authMain")
+	} else {
+		return c.Redirect(http.StatusMovedPermanently, "/chat")
+	}
+}
+func AuthMain(c echo.Context) error {
+	return additional.AuthRegView(c, "authMain")
+}
+
+
+//handlersPackage/registration.go
+
+package handlersPackage
+
+import (
+	"bytes"
+	"chat/additional"
+	"chat/variables"
+	"crypto/md5"
+	"github.com/disintegration/imaging"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v4"
+	"image/jpeg"
+	"net/http"
+	"time"
+)
+
+func RegGET(c echo.Context) error {
+	return additional.AuthRegView(c, "reg")
+}
+
+func RegPOST(c echo.Context) error {
+	username := c.FormValue("username")
+	result, err := variables.Db.Query("select username from user where username = ?", username)
+	if err != nil {
+		return err
+	}
+	if result.Next() != false {
+		return err
+	}
+	email := c.FormValue("email")
+	resultEmail, err := variables.Db.Query("select email from user where email = ?", email)
+	if err != nil {
+		return err
+	}
+	if resultEmail.Next() != false {
+		return err
+	}
+	password := c.FormValue("password")
+	logo, err := c.FormFile("logo")
+	if err != nil {
+		return err
+	}
+	src, err := logo.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	var dst []byte
+	img, _ := jpeg.Decode(src)
+
+	compressedImage := imaging.Resize(img, 100, 100, imaging.Lanczos)
+	buf := new(bytes.Buffer)
+	if err != nil {
+		return err
+	}
+	err = jpeg.Encode(buf, compressedImage, nil)
+	dst = buf.Bytes()
+	if err != nil {
+		return err
+	}
+	hashPassword := md5.Sum([]byte(password + variables.AdditionalString))
+	_, err = variables.Db.Exec("insert into user (username, email, password,logo) values (?, ?, ?, ?)",
+		username, email, string(hashPassword[:]), dst)
+	if err != nil {
+		return err
+	}
+
+	// Set custom claims
+	claims := &variables.JwtCustomClaims{
+		Name: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
+		},
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Generate encoded token and send it as response.
+	t, err := token.SignedString(variables.Secret)
+	if err != nil {
+		return err
+	}
+	JWTCookie := &http.Cookie{}
+	JWTCookie.Name = "JWTToken"
+	JWTCookie.Expires = time.Now().Add(time.Hour * 72)
+	JWTCookie.Value = t
+	JWTCookie.SameSite = 3
+	JWTCookie.HttpOnly = true
+	JWTCookie.Secure = true
+	c.SetCookie(JWTCookie)
+
+	return c.Redirect(http.StatusMovedPermanently, "/chat")
+}
+
+
+//logger/logger.go
+
+package logger
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/rs/zerolog"
+)
+
+type MyLogger struct {
+	zerolog.Logger
+}
+
+var Logger MyLogger
+
+func NewLogger() MyLogger {
+	// create output configuration
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+
+	// Format level: fatal, error, debug, info, warn
+	output.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+	}
+	output.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s:", i)
+	}
+	output.FormatFieldValue = func(i interface{}) string {
+		return fmt.Sprintf("%s", i)
+	}
+
+	// format error
+	output.FormatErrFieldName = func(i interface{}) string {
+		return fmt.Sprintf("%s: ", i)
+	}
+
+	zerolog := zerolog.New(output).With().Caller().Timestamp().Logger()
+	Logger = MyLogger{zerolog}
+	return Logger
+}
+
+func (l *MyLogger) LogInfo() *zerolog.Event {
+	return l.Logger.Info()
+}
+
+func (l *MyLogger) LogError() *zerolog.Event {
+	return l.Logger.Error()
+}
+
+func (l *MyLogger) LogDebug() *zerolog.Event {
+	return l.Logger.Debug()
+}
+
+func (l *MyLogger) LogWarn() *zerolog.Event {
+	return l.Logger.Warn()
+}
+
+func (l *MyLogger) LogFatal() *zerolog.Event {
+	return l.Logger.Fatal()
+}
+
+
+//logger/loggetMiddlerware.go
+
+package logger
+
+import (
+	"github.com/labstack/echo/v4"
+)
+
+func LoggingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// log the request
+		Logger.LogInfo().Fields(map[string]interface{}{
+			"method": c.Request().Method,
+			"uri":    c.Request().URL.Path,
+			"query":  c.Request().URL.RawQuery,
+		}).Msg("Request")
+
+		// call the next middleware/handler
+		err := next(c)
+		if err != nil {
+			Logger.LogError().Fields(map[string]interface{}{
+				"error": err.Error(),
+			}).Msg("Response")
+			return err
+		}
+
+		return nil
+	}
+}
+
+
+//variables/structs.go
+
+package variables
+
+import (
+	"github.com/golang-jwt/jwt/v5"
+	"time"
+)
+
+// struct of newMessageCounter
+type MessagesCounter struct {
+	MCounter int
+	UserID   int
+}
+
+// struct of Message
+type Message struct {
+	Text      string
+	File      []byte
+	FileName  string
+	Date      time.Time
+	DateStr   string
+	Pos       string
+	MessageID int
+	Favourite bool
+}
+
+// struct of favourite Message
+type FavouriteMessages struct {
+	Text      string
+	File      []byte
+	FileName  string
+	Date      time.Time
+	DateStr   string
+	Pos       string
+	FromID    int
+	MessageID int
+	UserName  string
+	Favourite bool
+}
+
+// struct of user connects
+type User struct {
+	Id       int
+	Username string
+	Logo     string
+}
+
+// structure of JWT claim(contains username)
+type JwtCustomClaims struct {
+	Name string `json:"name"`
+	jwt.RegisteredClaims
+}
+
+//var.go
+
+package variables
+
+import "database/sql"
+
+// const variables
+var TimeFormat = "2006-01-02 15:04:05"
+var Db *sql.DB
+
+// Secret phrase for encryption
+var Secret = []byte("secret")
+var AdditionalString = "aditionalS 97treng.6123"
+
+
+//go.mod
+
+module chat
+
+go 1.21.5
+
+require (
+	github.com/disintegration/imaging v1.6.2
+	github.com/go-sql-driver/mysql v1.8.1
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/labstack/echo-jwt/v4 v4.2.0
+	github.com/labstack/echo/v4 v4.11.4
+	github.com/labstack/gommon v0.4.2
+	github.com/rs/zerolog v1.33.0
+)
+
+require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.2.2 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
+)

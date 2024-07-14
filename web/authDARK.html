@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в аккаунт</title>
+    <link rel="stylesheet" href="/style/style.css">
+    <link rel="stylesheet" href="/style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body class="bodyDark">
+    <div class="authContainer">
+        <a class="backButton" href="/authMain"><img src="static/back.png" alt=""></a>
+        <div class="authInnerContainerDARK">
+            <div class="authLogo">
+                <h1>Вход</h1>
+            </div>
+        
+            <form method="post">
+                <input type="text" id="login"name="username" placeholder="Логин" required>
+                <input type="password" id="password"name="password"placeholder="Пароль" required>
+                <button class="authButtonDARK" type="submit">ВХОД</button>
+            </form>
+        </div>   
+        <a class="lightMode" href="/login?toggle=true"><img src="static/dark/sun.png" alt=""></a>
+    </div>
+    
+ 
+</body>
+</html>

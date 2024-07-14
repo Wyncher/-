@@ -1,0 +1,70 @@
+<mxfile host="Electron" modified="2024-06-09T10:25:51.232Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.7.5 Chrome/114.0.5735.289 Electron/25.8.1 Safari/537.36" etag="sscDZccfJDBIVDl9aTwg" version="21.7.5" type="device">
+  <diagram name="Страница — 1" id="Q1fVZdqcfoiv7orIljOk">
+    <mxGraphModel dx="980" dy="574" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Xq415jQRzl1JTuILEoNX-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Xq415jQRzl1JTuILEoNX-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="216.1892284543144" y="435" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-2" value="Пользователь" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=default;" vertex="1" parent="1">
+          <mxGeometry x="102" y="405" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="Xq415jQRzl1JTuILEoNX-4" target="Xq415jQRzl1JTuILEoNX-18">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="577" y="388" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="457" y="428" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-4" value="MariaDB" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.quantum_ledger_database;" vertex="1" parent="1">
+          <mxGeometry x="633" y="411" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" target="Xq415jQRzl1JTuILEoNX-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="293.8107715456857" y="435" as="sourcePoint" />
+            <mxPoint x="375" y="435" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="294" y="436" />
+              <mxPoint x="319" y="436" />
+              <mxPoint x="319" y="393" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-13" value="HTTP запрос" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="Xq415jQRzl1JTuILEoNX-9">
+          <mxGeometry x="-0.1205" y="1" relative="1" as="geometry">
+            <mxPoint x="18" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="Xq415jQRzl1JTuILEoNX-18" target="Xq415jQRzl1JTuILEoNX-4">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="541" y="465" as="sourcePoint" />
+            <mxPoint x="632" y="454" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="604" y="468" />
+              <mxPoint x="604" y="468" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-12" value="Браузер" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.globe;" vertex="1" parent="1">
+          <mxGeometry x="215" y="396" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-15" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="376" y="358" width="162" height="153" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-16" value="Handlers" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="412" y="384" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-17" value="Сервер" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="427" y="324" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Xq415jQRzl1JTuILEoNX-18" value="Обработчик" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="404" y="449" width="106" height="37" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="stylesheet" href="style/reset.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="  crossorigin="anonymous"></script>
+    <script src="static/script.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="chatLogo">
+            <img src="static/logoImg.png" alt="LOGO">
+            <h1>ЧтоСлучилось</h1>
+        </div>
+        <div class="blockButton">
+            <a class="lightMode" href="/chat?toggle=true"><img src="static/moon.png" alt=""></a>
+            <a class="lightMode" href="/chat?logout=true"><img src="static/logout.png" alt=""></a>
+        </div>
+        
+    </div>
+
+    <div class="body">
+        <div class="searchContainer">
+
+                <input id="searchInput" type="text" placeholder="    Поиск">
+                <button type="submit" id="send"><img src="static/search.png" alt=""></button>
+
+        </div>
+        <div class="userListContainer" id="userListContainer">
+            <div class="userCard"><a href="/chat?favouritechats=true"><img alt="Красивый логотип" id="" alt="" src="static/star.png"><h1>Избранные</h1></a></div>
+        </div>
+    <div class="chatBody">
+        <div class="messages">
+            {{range $key, $value := .}}
+            {{if $value.Favourite}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRight">
+                <a>Ваше сообщение</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">
+                    {{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeft">
+                <a href="/chat?recipient={{ $value.UserName }}">{{ $value.UserName }}</a>
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">
+                    {{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?deletefavourite={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+
+            {{else}}
+            {{if eq $value.Pos "r"}}
+            <div class="messageRight">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/star.png" alt=""></a>
+                </div>
+
+            </div>
+            {{else}}
+            <div class="messageLeft">
+                {{ $value.Text }}
+                <span>{{ $value.DateStr }}</span>
+                <span style="cursor:pointer;" onclick="downloadBlob({{ $value.File }}, '{{ $value.FileName }}');">{{ $value.FileName }}</span>
+                <div class="messageBottom">
+                    <a href="/chat?delete={{ $value.MessageID }}"><img src="static/trash.png" alt=""></a>
+                    <a href="/chat?favourite={{ $value.MessageID }}"><img src="static/star.png" alt=""></a>
+                </div>
+            </div>
+            {{end}}
+            {{end}}
+            {{end}}
+        </div>
+
+
+        <div class="sendPanel">
+                <form method="POST" enctype="multipart/form-data">
+                    <a><img class="smileBtn" src="static/smile.png" alt=""></a>
+                    <input id="text-input" class="textInput" type="text" placeholder="Напишите что-нибудь..."  name="message" required>
+                    <button type="submit"><img class="sendBtn" src="static/send.png" alt=""></button>
+
+                        <label for="file-input">
+                            <img class="attachImg" src="static/attach.png" alt="">
+                        </label>
+                        <button>
+                            <input id="file-input" type="file" name="file">
+                        </button>
+
+
+                </form>
+        </div>
+        <div class="smileSlideOuter">
+            <div class="smileSlide">
+                <p style="width: 950px;text-align: center;">Эмоции</p>
+                <a>😀</a>
+                <a>😃</a>
+                <a>😄</a>
+                <a>😁</a>
+                <a>😆</a>
+                <a>😅</a>
+                <a>🤣</a>
+                <a>😂</a>
+                <a>🙂</a>
+                <a>🙃</a>
+                <a>😉</a>
+                <a>😊</a>
+                <a>😇</a>
+                <a>🥰</a>
+                <a>😍</a>
+                <a>🤩</a>
+                <a>😘</a>
+                <a>😗</a>
+                <a>😚</a>
+                <a>😙</a>
+                <a>😋</a>
+                <a>😛</a>
+                <a>😜</a>
+                <a>🤪</a>
+                <a>😝</a>
+                <a>🤑</a>
+                <a>🤗</a>
+                <a>🤭</a>
+                <a>🤫</a>
+                <a>🤔</a>
+                <a>🤐</a>
+                <a>🤨</a>
+                <a>😍</a>
+                <a>😍</a>
+                <a>😍</a>
+                <a>😐</a>
+                <a>😑</a>
+                <a>😶</a>
+                <a>😏</a>
+                <a>😒</a>
+                <a>🙄</a>
+                <a>😬</a>
+                <a>🤢</a>
+                <a>🥵</a>
+                <a>🥶</a>
+                <a>😵</a>
+                <a>🥴</a>
+                <a>💋</a>
+                <a>💌</a>
+                <a>💘</a>
+                <a>💝</a>
+                <a>💖</a>
+                <a>💗</a>
+                <a>💓</a>
+                <a>💞</a>
+                <a>💕</a>
+                <a>💟</a>
+                <a>💔</a>
+                <a>🧡</a>
+                <a>💛</a>
+                <a>💚</a>
+                <a>💙</a>
+                <a>💜</a>
+                <a>🖤</a>
+                <a>💢</a>
+                <a>💥</a>
+                <a>💫</a>
+                <a>💦</a>
+                <a>💨</a>
+                <p style="width: 950px;text-align: center;">Люди</p>
+                <a>👋</a>
+                <a>🤚</a>
+                <a>✋</a>
+                <a>✋</a>
+                <a>👌</a>
+                <a>🤞</a>
+                <a>🤟</a>
+                <a>🤘</a>
+                <a>🤙</a>
+                <a>👈</a>
+                <a>👉</a>
+                <a>👆</a>
+                <a>🖕</a>
+                <a>👇</a>
+                <a>👍</a>
+                <a>👎</a>
+                <a>✊</a>
+                <a>👊</a>
+                <a>🤛</a>
+                <a>🤜</a>
+                <a>👏</a>
+                <a>🙌</a>
+                <a>👐</a>
+                <a>🤲</a>
+                <a>🤝</a>
+                <a>👄</a>
+                <a>👅</a>
+                <a>👶</a>
+                <a>👱</a>
+                <a>👨‍🦱</a>
+                <a>👩</a>
+                <a>👩‍🦰</a>
+                <a>🙍</a>
+                <a>🙇‍♂️</a>
+                <a>🤦</a>
+                <a>🤦‍♂️</a>
+                <a>🤷</a>
+                <a>🤷‍♂️</a>
+                <a>👩‍🌾</a>
+                <a>👨‍🌾</a>
+                <a>👨‍🍳</a>
+                <a>👩‍🍳</a>
+                <a>👨‍💻</a>
+                <a>👩‍💻</a>
+                <a>👮</a>
+                <a>👮‍♂️</a>
+                <a>👮‍♀️</a>
+                <a>💂</a>
+                <a>💂‍♀️</a>
+                <a>🚴</a>
+                <a>🏋️‍♂️</a>
+                <a>🏋️‍♀️</a>
+                <a>🤸</a>
+                <a>🤸‍♂️</a>
+                <a>🤸‍♀️</a>
+                <a>💏</a>
+                <a>👩‍❤️‍💋‍👨</a>
+                <a>👭</a>
+                <a>👫</a>
+                <a>👬</a>
+                <a>👨‍👩‍👦</a>
+                <a>👨‍👦</a>
+                <a>👨‍👧‍👦</a>
+                <p style="width: 950px;text-align: center;">Животные</p>
+                <a>🐵</a>
+                <a>🐒</a>
+                <a>🦍</a>
+                <a>🐶</a>
+                <a>🐕</a>
+                <a>🐩</a>
+                <a>🐺</a>
+                <a>🦊</a>
+                <a>🦝</a>
+                <a>🐱</a>
+                <a>🐈</a>
+                <a>🦁</a>
+                <a>🐯</a>
+                <a>🐅</a>
+                <a>🐆</a>
+                <a>🐴</a>
+                <a>🐎</a>
+                <a>🦄</a>
+                <a>🦓</a>
+                <a>🦌</a>
+                <a>🐷</a>
+                <a>🐖</a>
+                <a>🐗</a>
+                <a>🐑</a>
+                <a>🐭</a>
+                <a>🐀</a>
+                <a>🐰</a>
+                <a>🐇</a>
+                <a>🐨</a>
+                <a>🐻</a>
+                <a>🦇</a>
+                <a>🦔</a>
+                <a>🐾</a>
+                <a>🦘</a>
+                <a>🐔</a>
+                <a>🐓</a>
+                <a>🐣</a>
+                <a>🐤</a>
+                <a >🐥</a>
+                <a>🐦</a>
+                <a>🐧</a>
+                <a>🦅</a>
+                <a>🦆</a>
+                <a>🦢</a>
+                <a>🦉</a>
+                <a>🦚</a>
+                <a>🦜</a>
+                <a>🐸</a>
+                <a>🐊</a>
+                <a>🐢</a>
+                <a>🦎</a>
+                <a>🦕</a>
+                <a>🦖</a>
+                <a>🐳</a>
+                <a>🐋</a>
+                <a>🐬</a>
+                <a>🐟</a>
+                <a>🐠</a>
+                <a>🐡</a>
+                <a>🦈</a>
+                <a>🐙</a>
+                <a>🐚</a>
+                <a>🐌</a>
+                <a>🦋</a>
+                <p style="width: 950px;text-align: center;">Природа</p>
+                <a>💐</a>
+                <a>🌹</a>
+                <a>🥀</a>
+                <a>🌺</a>
+                <a>🌻</a>
+                <a>🌼</a>
+                <a>🌷</a>
+                <a>🌱</a>
+                <a>🌲</a>
+                <a>🌳</a>
+                <a>🌴</a>
+                <a>🌵</a>
+                <a>🌾</a>
+                <a>🌿</a>
+                <a>🍀</a>
+                <a>🍀</a>
+                <a>🍃</a>
+                <p style="width: 950px;text-align: center;">Еда и напитки</p>
+                <a>🍇</a>
+                <a>🍈</a>
+                <a>🍉</a>
+                <a>🍊</a>
+                <a>😍</a>
+                <a>🍋</a>
+                <a>🍌</a>
+                <a>🍍</a>
+                <a>🥭</a>
+                <a>🍎</a>
+                <a>🍏</a>
+                <a>🍐</a>
+                <a>🍑</a>
+                <a>🍒</a>
+                <a>🍓</a>
+                <a>🥝</a>
+                <a>🍅</a>
+                <a>🥥</a>
+                <a>🥑</a>
+                <a>🍆</a>
+                <a>🥔</a>
+                <a>🥕</a>
+                <a>🌽</a>
+                <a>🥒</a>
+                <a>🥬</a>
+                <a>🥦</a>
+                <a>🍄</a>
+                <a>🥜</a>
+                <a>🌰</a>
+                <a>🍞</a>
+                <a>🥐</a>
+                <a>🥖</a>
+                <a>🥨</a>
+                <a>🥯</a>
+                <a>🥞</a>
+                <a>🧀</a>
+                <a>🍖</a>
+                <a>🍗</a>
+                <a>🥩</a>
+                <a>🥓</a>
+                <a>🍔</a>
+                <a>🍟</a>
+                <a>🍕</a>
+                <a>🌭</a>
+                <a>🥪</a>
+                <a>🌮</a>
+                <a>🌯</a>
+                <a>🥙</a>
+                <a>🥚</a>
+                <a>🍳</a>
+                <a>🥘</a>
+                <a>🍲</a>
+                <a>🥣</a>
+                <a>🥗</a>
+                <a>🍿</a>
+                <a>🧂</a>
+                <a>🥫</a>
+                <a>🍱</a>
+                <a>🍘</a>
+                <a>🍙</a>
+                <a>🍚</a>
+                <a>🍛</a>
+                <a>🍜</a>
+                <a>🍝</a>
+                <a>🍠</a>
+                <a>🍢</a>
+                <a>🍣</a>
+                <a>🍤</a>
+                <a>🍥</a>
+                <a>🥮</a>
+                <a>🍡</a>
+                <a>🥟</a>
+                <a>🥠</a>
+                <a>🥡</a>
+                <a>🦀</a>
+                <a>🦞</a>
+                <a>🦐</a>
+                <a>🦑</a>
+                <a>🍦</a>
+                <a>🍧</a>
+                <a>🍨</a>
+                <a>🍩</a>
+                <a>🍪</a>
+                <a>🎂</a>
+                <a>🍰</a>
+                <a>🧁</a>
+                <a>🥧</a>
+                <a>🍫</a>
+                <a>🍬</a>
+                <a>🍭</a>
+                <a>🍮</a>
+                <a>🍯</a>
+                <a>🍼</a>
+                <a>🥛</a>
+                <a>☕</a>
+                <a>🍵</a>
+                <a>🍶</a>
+                <a>🍾</a>
+                <a>🍷</a>
+                <a>🍸</a>
+                <a>🍹</a>
+                <a>🍺</a>
+                <a>🍻</a>
+                <a>🥂</a>
+                <a>🥃</a>
+                <a>🥤</a>
+                <a>🥢</a>
+                <a>🍴</a>
+                <a>🥄</a>
+                <a>🔪</a>
+                <a>🏺</a>
+                <p style="width: 950px;text-align: center;">Места и путешествия</p>
+                <a>🌍</a>
+                <a>🌎</a>
+                <a>🌎</a>
+                <a>🌐</a>
+                <a>🏠</a>
+                <a>🏡</a>
+                <a>🏢</a>
+                <a>🏣</a>
+                <a>🏤</a>
+                <a>🏥</a>
+                <a>🏦</a>
+                <a>🏨</a>
+                <a>🏩</a>
+                <a>🏫</a>
+                <a>🏬</a>
+                <a>🏯</a>
+                <a>🏰</a>
+                <a>💒</a>
+                <a>🗼</a>
+                <a>🗽</a>
+                <a>⛪</a>
+                <a>🕌</a>
+                <a>🕍</a>
+                <a>⛲</a>
+                <a>⛺</a>
+                <a>🌄</a>
+                <a>🌅</a>
+                <a>🌇</a>
+                <a>🌆</a>
+                <a>🌌</a>
+                <a>🎠</a>
+                <a>🎡</a>
+                <a>🎢</a>
+                <a>🎪</a>
+                <a>🚇</a>
+                <a>🚉</a>
+                <a>🚈</a>
+                <a>🚋</a>
+                <a>🚌</a>
+                <a>🚍</a>
+                <a>🚎</a>
+                <a>🚐</a>
+                <a>🚑</a>
+                <a>🚒</a>
+                <a>🚓</a>
+                <a>🚔</a>
+                <a>🚕</a>
+                <a>🚖</a>
+                <a>🚘</a>
+                <a>🚙</a>
+                <a>🚚</a>
+                <a>🚜</a>
+                <a>🛵</a>
+                <a>🛴</a>
+                <a>⛽</a>
+                <a>🚨</a>
+                <a>🚥</a>
+                <a>🚦</a>
+                <a>🛑</a>
+                <a>🚧</a>
+                <a>⚓</a>
+                <a>🚀</a>
+                <a>🚁</a>
+                <a>⌛</a>
+                <a>⌚</a>
+                <a>⏰</a>
+                <a>☔</a>
+                <a>⚡</a>
+                <a>🔥</a>
+                <a>💧</a>
+                <p style="width: 950px;text-align: center;">Символы</p>
+                <a>⛔</a>
+                <a>🚫</a>
+                <a>🚳</a>
+                <a>🚭</a>
+                <a>🚯</a>
+                <a>🚱</a>
+                <a>🚷</a>
+                <a>📵</a>
+                <a>🔞</a>
+                <a>🔃</a>
+                <a>🔄</a>
+                <a>🔙</a>
+                <a>🔚</a>
+                <a>🔛</a>
+                <a>🔜</a>
+                <a>🔝</a>
+                <a>📳</a>
+                <a>📴</a>
+                <a>🎦</a>
+                <a>📛</a>
+                <a>✅</a>
+                <a>❎</a>
+                <a>❌</a>
+                <a>➿</a>
+
+            </div>
+            </div>
+
+    </div>
+
+    </div>
+    </div>
+</body>
+
+</html>
