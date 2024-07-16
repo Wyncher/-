@@ -6,7 +6,7 @@
 <p>Используемые средства</p>
 <ul>
   <li>Golang(ECHO,JWT)</li>
-  <li>HTML,CSS,JS,JQUJERY</li>
+  <li>HTML,CSS,JS,JQUERY</li>
   <li>MariaDB</li>
 </ul>
 <p>Функционал</p>
